@@ -1,6 +1,11 @@
 log_dir = 'logs'
 tool_length = 60
 
+sonar_ip = '192.168.8.172'
+sonar_port = 1000
+sonar_rate = 10000
+sonar_duration = 20
+
 # The track is not in steps of 0.1 mm. This is an emperical conversion factor.
 # displacement in 0.1 mm = x * track_correcton_ratio
 

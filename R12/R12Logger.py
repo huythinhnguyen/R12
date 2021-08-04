@@ -27,7 +27,7 @@ class Logger:
         self.table.rows.append([A, B])
 
     def add_comment(self, text, level=0):
-        if Misc.iterable(text): text = Misc.lst2str(text)
+        if Misc.iterable(text): text = Misc.lst2str(text, sep=' ')
         if level == 0: self.add(text, color=message_color)
         if level == 1: self.add(text, color=warning_color)
         if level == 2: self.add(text, color=error_color)

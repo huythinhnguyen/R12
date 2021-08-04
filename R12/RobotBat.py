@@ -3,8 +3,9 @@ import platform
 import warnings
 import easygui
 import numpy
+import re
 
-from pyBat import Geometry, Ports, Misc
+from pyBat import Geometry, Ports, Misc, MaxbotixRobot
 
 from .r12 import arm
 from R12 import R12Logger
@@ -43,6 +44,13 @@ def ask_initialize():
     response = easygui.ynbox(title='Robot initialize?', msg='Do you want to initialize the robot?')
     return response
 
+def find_integers(text):
+    regex = r"[-+]?[0-9]+"
+    found = re.findall(regex, text)
+    new = []
+    for x in found: new.append(int(x))
+    return new
+
 
 def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
     r12_yaw = None
@@ -70,7 +78,7 @@ class RobotBat:
         self.connect_sonar = connect_sonar
         self.connect_robot = connect_robot
 
-        if self.connect_sonar: self.sonar = Sonar.Sonar(verbose=True)
+        if self.connect_sonar: self.sonar = MaxbotixRobot.Client(Settings.sonar_ip, Settings.sonar_port, verbose=True)
 
         if self.connect_robot:
             if os == 'Windows': port = Ports.get_port("USB Serial Port (COM5)")
@@ -179,11 +187,10 @@ class RobotBat:
         if 'ABORTED' in transform_response: return {'success': False, 'pitch_axis': False}
         self.send_command('TRANSFORM DROP')
         pitch_axis = self.send_command('TARGET 6 + @ 90DEG M* W-RATIO M/ .')
-        pitch_axis = Misc.find_integers(pitch_axis)[2] / 100
+        pitch_axis = find_integers(pitch_axis)[2] / 100
         return {'success': True, 'pitch_axis': pitch_axis}
 
-    def check_reachable(self, arm_x, arm_y, arm_z, world_yaw, world_pitch, wrist_orientation, pitch_axis_only=False,
-                        binary=False):
+    def check_reachable(self, arm_x, arm_y, arm_z, world_yaw, world_pitch, wrist_orientation, pitch_axis_only=False, binary=False):
         arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_orientation=wrist_orientation)
         result = self.simulate_arm(arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll)
         if pitch_axis_only: return result['pitch_axis']
@@ -205,8 +212,7 @@ class RobotBat:
         if angle_up < angle_down: return 'up'
         return False
 
-    def recommend_wrist_track_position(self, world_x, world_y, world_z, world_yaw, world_pitch,
-                                       wrist_orientation='auto'):
+    def recommend_wrist_track_position(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
         world_yaw = Geometry.phi_range(world_yaw)
         # track x should be larger than robot_sph_2_world_cart x
         proposed_track_positions = numpy.linspace(world_x - 600, world_x, 5)
@@ -224,8 +230,7 @@ class RobotBat:
                 wrist_recommendation = self.recommend_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
                 if wrist_recommendation: return wrist_recommendation, proposed_track_position, arm_x
             else:
-                reachable = self.check_reachable(arm_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation,
-                                                 binary=True)
+                reachable = self.check_reachable(arm_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation, binary=True)
                 if reachable: return wrist_orientation, proposed_track_position, arm_x
         return False, False, False
 
@@ -239,10 +244,7 @@ class RobotBat:
         return True
 
     def set_position(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
-        wrist_recommendation, proposed_track_position, arm_x = self.recommend_wrist_track_position(world_x, world_y,
-                                                                                                   world_z, world_yaw,
-                                                                                                   world_pitch,
-                                                                                                   wrist_orientation)
+        wrist_recommendation, proposed_track_position, arm_x = self.recommend_wrist_track_position(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
         if not wrist_recommendation: return False
         arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_recommendation)
 
@@ -254,8 +256,7 @@ class RobotBat:
         self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, arm_roll)
         return True
 
-    def set_move(self, fwd_dst=0, fwd_hvr=0, lat_dst=0, ud_dst=0, yaw=0, pitch=0, roll=0, wrist_orientation='auto',
-                 cds_only=False):
+    def set_move(self, fwd_dst=0, fwd_hvr=0, lat_dst=0, ud_dst=0, yaw=0, pitch=0, roll=0, wrist_orientation='auto', cds_only=False):
         # Apply fwd movement and rotation angles
         if not self.frame_initialized: return False
         frame_back_up = copy.copy(self.frame)
@@ -290,7 +291,8 @@ class RobotBat:
         if not self.sonar: return numpy.random.random((2, 100))
         flip = False
         if self.connect_robot and self.current_wrist_position == 'up': flip = True
-        data = self.sonar.measure(flip=flip)
+        data = self.sonar.measure(rate=Settings.sonar_rate, duration=Settings.sonar_duration)
+        if flip: data = numpy.fliplr(data)
         return data
 
     def pitch_scan(self, pitches, wrist_orientation):

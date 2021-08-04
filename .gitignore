@@ -2,3 +2,5 @@
 .idea/
 
 logs/
+
+R12/__pycache__/
