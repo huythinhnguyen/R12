@@ -3,7 +3,7 @@ from R12 import Target
 import numpy
 from matplotlib import pyplot
 
-R = RobotBat.RobotBat(connect_sonar=True)
+R = RobotBat.RobotBat(connect_sonar=False)
 R.initialize()
 
 target = Target.Target(1000, 0, 350)
