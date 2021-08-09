@@ -1,5 +1,5 @@
 log_dir = 'logs'
-tool_length = 60
+tool_length = 40
 
 sonar_ip = '192.168.8.172'
 sonar_port = 1000

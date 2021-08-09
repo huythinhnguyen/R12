@@ -92,15 +92,16 @@ class RobotBat:
         self.frame_initialized = False
         self.execute = True
 
-    def send_command(self, cmd, verbose=False, log=True):
+    def send_command(self, cmd, verbose=True, log=True):
         if not self.connect_robot:
             self.logger.add_comment('Robot not connected!')
             return
+        if verbose: self.logger.add_comment('Sent to robot:' + cmd)
         self.arm.write(cmd)
         if log: self.logger.add_input(cmd)
         result = self.arm.read()
         if log: self.logger.add_output(result)
-        if verbose: print(result)
+        #if verbose: print('received from robot -->', result)
         return result
 
     def send_batch(self, cmds, verbose=False, log=True):
@@ -186,6 +187,7 @@ class RobotBat:
         transform_response = self.send_command('TRANSFORM')
         if 'ABORTED' in transform_response: return {'success': False, 'pitch_axis': False}
         self.send_command('TRANSFORM DROP')
+
         pitch_axis = self.send_command('TARGET 6 + @ 90DEG M* W-RATIO M/ .')
         pitch_axis = find_integers(pitch_axis)[2] / 100
         return {'success': True, 'pitch_axis': pitch_axis}
@@ -228,6 +230,7 @@ class RobotBat:
             arm_x = world_x - proposed_track_position
             if wrist_orientation == 'auto':
                 wrist_recommendation = self.recommend_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
+                self.logger.add_comment(['Recommended wrist position:', wrist_recommendation])
                 if wrist_recommendation: return wrist_recommendation, proposed_track_position, arm_x
             else:
                 reachable = self.check_reachable(arm_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation, binary=True)
