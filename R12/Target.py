@@ -12,7 +12,7 @@ h_aspect = 45 returns a position at which the robot is at azimuth 45 with respec
 """
 
 class Target:
-    def __init__(self, x, y, z, rotation=180):
+    def __init__(self, x=0, y=0, z=0, rotation=180):
         self.x = x
         self.y = y
         self.z = z

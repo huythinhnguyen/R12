@@ -99,13 +99,15 @@ class Arm(object):
             time.sleep(READ_SLEEP_TIME)
             time_waiting += READ_SLEEP_TIME
 
-            raw_out += self.ser.read(self.ser.in_waiting)
+            part = self.ser.read(self.ser.in_waiting)
+            raw_out = raw_out + part
+            #print(part.decode(OUTPUT_ENCODING), end='')
             out = raw_out.decode(OUTPUT_ENCODING)
 
             # TODO how to handle timeouts, if they're now unexpected?
             if time_waiting >= timeout:
                 break
-
+        #print()
         if raw:
             return raw_out
         return out
