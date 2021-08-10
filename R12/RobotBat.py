@@ -98,9 +98,9 @@ class RobotBat:
             return
         if verbose: self.logger.add_comment('Sent to robot:' + cmd)
         self.arm.write(cmd)
-        if log: self.logger.add_input(cmd)
+        if log: self.logger.add_sent_cmd(cmd)
         result = self.arm.read()
-        if log: self.logger.add_output(result)
+        if log: self.logger.add_received_response(result)
         #if verbose: print('received from robot -->', result)
         return result
 
