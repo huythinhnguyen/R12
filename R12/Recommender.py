@@ -19,5 +19,4 @@ class Recommender:
         sm = dx + dy + dz
         min_index = numpy.argmin(sm)
         selected = self.data.iloc[min_index, :]
-        print('here')
         return  selected

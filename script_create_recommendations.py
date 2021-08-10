@@ -1,20 +1,11 @@
-from R12 import RobotBat2
+from R12 import RobotBat
 from R12 import Target
 import numpy
 from pyBat import Misc
 from matplotlib import pyplot
 
-R = RobotBat2.RobotBat()
+R = RobotBat.RobotBat()
 R.initialize()
-
-target = Target.Target(1000, 0, 350)
-
-#for aspect in numpy.linspace(-30, 30, 11):
-# aspect = -30
-# result = target.get_robot_position(distance=500, h_aspect=aspect, simple=True)
-# R.set_position(result, wrist_orientation='up')
-# R.measure(plot=True)
-# R.move(fwd_dst=50, wrist_orientation='up')
 
 record = open('R12/recommendations.txt', 'w')
 

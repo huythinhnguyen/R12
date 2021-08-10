@@ -22,7 +22,7 @@ class Target:
         self.leaf_frame.goto(x, y, z, yaw=rotation)
         self.world_frame_leaf_position = numpy.array([x, y, z])
 
-    def get_robot_position(self, distance, h_aspect=0, v_aspect=0, azimuth=0, elevation=0, plot=False, simple=False):
+    def get_robot_position(self, distance, h_aspect=0, v_aspect=0, azimuth=0, elevation=0, plot=False, simple=True):
         # In the leaf frame, what is the required position of the robot?
         leaf_frame_robot_position = Geometry.sph2cart(h_aspect, v_aspect, distance)
         leaf_frame_robot_position = numpy.array(leaf_frame_robot_position)
