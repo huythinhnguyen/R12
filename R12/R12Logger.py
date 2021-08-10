@@ -16,7 +16,7 @@ message_color = '#a2d9ce'
 class Logger:
     def __init__(self, auto_write=True):
         self.table = HTML.Table(header_row=['Time', 'Text'])
-        self.console_log = [0, 1, 2, 'cmd', 'rsp']
+        self.console_log = [0, 1, 2, 'cmd'] # options: [0, 1, 2, 'cmd', 'rsp']
         self.auto_write = auto_write
 
     def add(self, text, color=False, pre=False):
