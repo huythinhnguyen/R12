@@ -1,10 +1,11 @@
 from pyBat import Geometry, Ports, Misc, MaxbotixRobot
 import warnings
 import easygui
-from .r12 import arm
+from r12 import arm
 from R12 import R12Logger
 from R12 import Settings
 from R12 import Recommender
+from R12 import TrackFind
 import platform
 import time
 import re
@@ -47,43 +48,6 @@ def find_integers(text):
     new = []
     for x in found: new.append(int(x))
     return new
-
-
-def find_track_position(world_x, world_y, world_z):
-    start = time.time()
-
-    reach = 450
-    track_range = 1200
-    resolution = 5
-    tool_length = Settings.tool_length
-
-    if world_x > 0:
-        track_x = -track_range
-        x_step = resolution
-    else:
-        track_x = track_range
-        x_step = -resolution
-
-    while True:
-        S1 = ((world_x - track_x) ** 2 + world_y ** 2) ** 0.5
-        S2 = (S1 ** 2 + world_z ** 2) ** 0.5
-        if S2 <= reach - tool_length: break
-        if abs(track_x) > track_range: break
-        track_x = track_x + x_step
-
-    success = abs(track_x) <= track_range
-
-    end = time.time()
-    duration = end - start
-    arm_x = world_x - track_x
-    result = {}
-    result['duration'] = duration
-    result['success'] = success
-    result['track_x'] = track_x
-    result['arm_x'] = arm_x
-    result['world_x'] = world_x
-    return result
-
 
 def ask_initialize():
     msg = 'Do you want to initialize the robot?'
@@ -227,27 +191,33 @@ class RobotBat:
         result = self.set_position_individual(x, y, z, yaw, pitch, wrist_orientation)
         return result
 
+    def find_wrist_orientation(self, arm_x, world_y, world_z, world_yaw, world_pitch):
+        if self.use_recommender:
+            wrist_orientation = self.look_up_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
+            self.logger.add_comment('Using recommender for wrist position: ' + wrist_orientation)
+        else:
+            wrist_orientation = self.calculate_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
+            self.logger.add_comment('Using simulation for wrist position: ' + wrist_orientation)
+        return wrist_orientation
+
+
     def set_position_individual(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
-        find_track_position_result = find_track_position(world_x, world_y, world_z)
-
-        success = find_track_position_result['success']
-        track_x = find_track_position_result['track_x']
-        arm_x = find_track_position_result['arm_x']
-
-        if not success:
-            self.logger.add_comment('No track position found', level=2)
-            return False
-        self.logger.add_comment('Track position found: ' + str(track_x))
-
-        if wrist_orientation == 'auto':
-            if self.use_recommender:
-                self.logger.add_comment('Using recommender for wrist position')
-                wrist_orientation = self.look_up_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
-            else:
-                wrist_orientation = self.calculate_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
-            self.logger.add_comment('Recommended wrist orientation: ' + wrist_orientation)
-
         arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_orientation)
+        track_up, track_down, find_track_result = TrackFind.find_track_position(world_x, world_y, world_z, world_yaw, simple=True)
+        if not track_up: wrist_orientation = 'down'
+        if not track_down: wrist_orientation = 'up'
+        if not min([track_up, track_down]):
+            requested = str([world_x, world_y, world_z, world_yaw])
+            self.logger.add_comment('No track position found: ' + requested)
+
+
+        #if wrist_orientation == 'auto':
+        #    wrist_orientation = self.find_wrist_orientation(arm_x, world_y, world_z, world_yaw, world_pitch)
+        #track_x = find_track_result[wrist_orientation]['track_x']
+        #arm_x = find_track_result[wrist_orientation]['arm_x']
+
+
+
         self.goto_track(track_x)
         self.goto_arm(arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
         self.frame = Geometry.Frame()
@@ -316,14 +286,30 @@ class RobotBat:
         if angle_down < angle_up: return 'down'
         if angle_up < angle_down: return 'up'
 
-    def measure(self, plot=False):
+    def measure(self, plot=False, subtract_floor = True):
+        self.logger.add_comment('Starting echo measurement')
         if not self.sonar: return numpy.random.random((2, 100))
         flip = False
         if self.connect_robot and self.current_wrist_orientation == 'down': flip = True
         data = self.sonar.measure(rate=Settings.sonar_rate, duration=Settings.sonar_duration)
         if flip: data = numpy.fliplr(data)
+        if subtract_floor: data = data - Settings.sonar_floor
+        data[data < 0] = 0
         if plot:
             pyplot.plot(data)
             pyplot.legend(['Left', 'Right'])
             pyplot.show()
         return data
+
+    @property
+    def position(self):
+        if not self.frame_initialized: return [None, None, None]
+        return list(self.frame.position)
+
+    @property
+    def euler(self):
+        return self.frame.euler
+
+
+if __name__ == "__main__":
+    find_track_position(490.89520395684394, 280.7569753596211, 300.0, 35.0, trace=True)

@@ -5,7 +5,7 @@ import os
 
 class Recommender:
     def __init__(self):
-        data_file = os.path.join('R12','recommendations.txt')
+        data_file = os.path.join(os.path.dirname(__file__), 'recommendations.txt')
         self.data = pandas.read_csv(data_file, header=None)
         self.data.columns = ['x', 'y', 'z', 'angle_up', 'angle_down', 'recommendation']
         self.x_values = self.data.x.values
