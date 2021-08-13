@@ -1,29 +1,21 @@
 import time
 
 
-def find_track_position(world_x, world_y, world_z, world_yaw, simple=False, trace=False):
-    find_track_position_result = find_track_position_both(world_x, world_y, world_z, world_yaw, trace=trace)
-    successes = find_track_position_result['success']
-    possibilities = {}
-    if successes[0]: possibilities['up'] = find_track_position_result['up']['track_x']
-    if successes[1]: possibilities['down'] = find_track_position_result['down']['track_x']
-    up_track_x = find_track_position_result['up']['track_x']
-    down_track_x = find_track_position_result['down']['track_x']
+def find_track_position(world_x, world_y, world_z, world_yaw, trace=False):
+    result = find_track_position_both(world_x, world_y, world_z, world_yaw, trace=trace)
+    possibilities = []
+    if result['up']['success']: possibilities.append('up')
+    if result['down']['success']: possibilities.append('down')
+    return possibilities, result
 
-    find_track_position_result['possibilities'] = possibilities
-    if simple: return [up_track_x, down_track_x, find_track_position_result]
-    return find_track_position_result
 
 
 def find_track_position_both(world_x, world_y, world_z, world_yaw, trace=False):
     up_result = find_track_position_single(world_x, world_y, world_z, world_yaw, trace=trace, wrist_position='up')
     down_result = find_track_position_single(world_x, world_y, world_z, world_yaw, trace=trace, wrist_position='down')
     result = {}
-    success_up = up_result['success']
-    success_down = down_result['success']
     result['up'] = up_result
     result['down'] = down_result
-    result['success'] = [success_up, success_down]
     return result
 
 
