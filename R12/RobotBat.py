@@ -1,7 +1,12 @@
 from pyBat import Geometry, Ports, Misc, MaxbotixRobot
 import warnings
 import easygui
-from r12 import arm
+
+try:
+    from r12 import arm
+except:
+    from .r12 import arm
+
 from R12 import R12Logger
 from R12 import Settings
 from R12 import Recommender
@@ -191,14 +196,7 @@ class RobotBat:
         result = self.set_position_individual(x, y, z, yaw, pitch, wrist_orientation)
         return result
 
-    def find_wrist_orientation(self, arm_x, world_y, world_z, world_yaw, world_pitch):
-        if self.use_recommender:
-            wrist_orientation = self.look_up_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
-            self.logger.add_comment('Using recommender for wrist position: ' + wrist_orientation)
-        else:
-            wrist_orientation = self.calculate_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
-            self.logger.add_comment('Using simulation for wrist position: ' + wrist_orientation)
-        return wrist_orientation
+
 
 
     def set_position_individual(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
@@ -209,6 +207,15 @@ class RobotBat:
         if not min([track_up, track_down]):
             requested = str([world_x, world_y, world_z, world_yaw])
             self.logger.add_comment('No track position found: ' + requested)
+            return False
+
+        arm_x_up = find_track_result['up']['arm_x']
+        arm_x_down = find_track_result['down']['arm_x']
+
+        wrist_orientation_A = self.look_up_wrist_position(arm_x_up, world_y, world_z, world_yaw, world_pitch)
+        wrist_orientation_B = self.look_up_wrist_position(arm_x_down, world_y, world_z, world_yaw, world_pitch)
+
+        print(wrist_orientation_A, wrist_orientation_B,  track_up, track_down)
 
 
         #if wrist_orientation == 'auto':
@@ -218,13 +225,13 @@ class RobotBat:
 
 
 
-        self.goto_track(track_x)
-        self.goto_arm(arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
-        self.frame = Geometry.Frame()
-        self.frame_initialized = True
-        self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, arm_roll)
-        self.current_wrist_orientation = wrist_orientation
-        return True
+        #self.goto_track(track_x)
+        #self.goto_arm(arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
+        #self.frame = Geometry.Frame()
+        #self.frame_initialized = True
+        #self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, arm_roll)
+        #self.current_wrist_orientation = wrist_orientation
+        #return True
 
     def move(self, fwd_dst=0, fwd_hvr=0, lat_dst=0, ud_dst=0, yaw=0, pitch=0, roll=0, wrist_orientation='auto', cds_only=False):
         # Apply fwd movement and rotation angles
