@@ -1,5 +1,9 @@
 log_dir = 'logs'
-tool_length = 40
+
+tool_length = 55
+wrist_length = 63
+robot_reach = 500-50
+robot_reach_buffer = 25
 
 sonar_ip = '192.168.1.5'
 sonar_port = 1000

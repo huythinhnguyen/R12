@@ -9,10 +9,9 @@ except:
 
 from R12 import R12Logger
 from R12 import Settings
-from R12 import TrackFind
-from R12 import WristFind
+from R12 import RobotModel
 import platform
-import time
+
 import re
 import numpy
 import copy
@@ -62,23 +61,7 @@ def ask_initialize():
     return response
 
 
-def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
-    r12_yaw = None
-    r12_pitch = None
-    r12_roll = None
-    wrist_orientation = wrist_orientation.lower()
 
-    if wrist_orientation == 'up':
-        r12_yaw = Geometry.phi_range(world_yaw)
-        r12_roll = Geometry.phi_range(-world_pitch)
-        r12_pitch = -90
-
-    if wrist_orientation == 'down':
-        r12_yaw = Geometry.phi_range(-world_yaw)
-        r12_roll = Geometry.phi_range(+world_pitch)
-        r12_pitch = 90
-
-    return r12_yaw, r12_pitch, r12_roll
 
 
 class RobotBat:
@@ -196,46 +179,20 @@ class RobotBat:
         result = self.set_position_individual(x, y, z, yaw, pitch, wrist_orientation)
         return result
 
-    def set_position_individual(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
-        start_time = time.time()
+    def set_position_individual(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation):
+        result = RobotModel.run_model(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
+        track_x = result['track_x']
+        arm_x = result['arm_x']
+        arm_y = result['arm_y']
+        arm_z = result['arm_z']
+        arm_yaw = result['arm_yaw']
+        arm_pitch = result['arm_pitch']
+        arm_roll = result['arm_roll']
+        wrist_orientation = result['wrist_orientation']
+        self.logger.add_comment('Selected wrist_orientation: ' + wrist_orientation)
 
-        arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_orientation)
-        possibilities, find_track_result = TrackFind.find_track_position(world_x, world_y, world_z, world_yaw)
-        self.logger.add_comment('Possible wrist orientations: ' + str(possibilities))
-        if not possibilities:
-            requested = str([world_x, world_y, world_z, world_yaw])
-            self.logger.add_comment('No track position found: ' + requested)
-            return False
-
-        wrist_angle_up = -999
-        wrist_angle_down = -999
-
-        if wrist_orientation != 'auto': possibilities = [wrist_orientation]
-
-        if 'up' in possibilities:
-            arm_x_up = find_track_result['up']['arm_x']
-            wrist_angle_up = WristFind.WristFind(arm_x_up, world_y, world_z, wrist_orientation='up')
-
-        if 'down' in possibilities:
-            arm_x_down = find_track_result['down']['arm_x']
-            wrist_angle_down = WristFind.WristFind(arm_x_down, world_y, world_z, wrist_orientation='down')
-
-        selected_wrist_orientation = 'up'
-        if wrist_angle_down > wrist_angle_up: selected_wrist_orientation = 'down'
-
-        track_x = find_track_result[selected_wrist_orientation]['track_x']
-        arm_x = find_track_result[selected_wrist_orientation]['arm_x']
-
-        self.logger.add_comment('Selected wrist orientation: ' + selected_wrist_orientation)
-        self.logger.add_comment('Geometry: ' + str((track_x, arm_x, world_y, world_z, round(wrist_angle_up), round(wrist_angle_down))))
-
-        end_time = time.time()
-        duration = end_time - start_time
-        self.logger.add_comment('Calculation duration: ' + str(duration))
-        if not self.connect_robot: return False
-
-        self.goto_track(track_x)
-        self.goto_arm(arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
+        #self.goto_track(track_x)
+        self.goto_arm(arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
         self.frame = Geometry.Frame()
         self.frame_initialized = True
         self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, arm_roll)
