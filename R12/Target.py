@@ -1,7 +1,6 @@
 import numpy
 from matplotlib import pyplot
-
-from pyBat import Geometry
+from R12 import Geometry
 
 """
 Azimuth/Elevation are the positions of target as seen from the robot.

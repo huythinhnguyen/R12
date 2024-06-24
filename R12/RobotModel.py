@@ -1,7 +1,8 @@
 from R12 import Settings
+from R12 import Geometry
 import math
 import numpy
-from pyBat import Geometry
+
 
 def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
     r12_yaw = None
