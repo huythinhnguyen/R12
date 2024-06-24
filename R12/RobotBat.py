@@ -11,7 +11,7 @@ from R12 import RobotModel
 from R12 import Geometry
 from R12 import Ports
 from R12 import Misc
-from R12 import MaxbotixRobot
+from R12 import Maxbotix
 
 try:
     from r12 import arm
@@ -74,7 +74,7 @@ class RobotBat:
         self.current_wrist_orientation = None
 
         if self.connect_sonar:
-            self.sonar = MaxbotixRobot.Client(Settings.sonar_ip, Settings.sonar_port, verbose=True)
+            self.sonar = Maxbotix.Client(Settings.sonar_ip, Settings.sonar_port, verbose=True)
         else:
             self.sonar = False
             self.logger.add_comment(['Not connecting to sonar'])

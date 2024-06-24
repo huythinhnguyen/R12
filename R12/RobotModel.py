@@ -11,13 +11,13 @@ def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
     wrist_orientation = wrist_orientation.lower()
 
     if wrist_orientation == 'up':
-        r12_yaw = Geometry.phi_range(world_yaw)
-        r12_roll = Geometry.phi_range(-world_pitch)
+        r12_yaw = Geometry.pi_range(world_yaw)
+        r12_roll = Geometry.pi_range(-world_pitch)
         r12_pitch = -90
 
     if wrist_orientation == 'down':
-        r12_yaw = Geometry.phi_range(-world_yaw)  # the axis around which yaw is measured flips direction
-        r12_roll = Geometry.phi_range(+world_pitch)
+        r12_yaw = Geometry.pi_range(-world_yaw)  # the axis around which yaw is measured flips direction
+        r12_roll = Geometry.pi_range(+world_pitch)
         r12_pitch = 90
 
     return r12_yaw, r12_pitch, r12_roll

@@ -5,6 +5,7 @@ from transforms3d import quaternions
 from R12 import Misc
 from matplotlib import pyplot
 
+
 class Frame:
     def __init__(self, *, quaternion=None, position=None):
         self.quaternion = copy.copy(quaternion)
@@ -124,7 +125,8 @@ class Frame:
     def move(self, time=0, yaw=0, pitch=0, roll=0, speed=0):
         rotation = make_quaternion(yaw * time, pitch * time, roll * time)
         self.quaternion = quaternions.qmult(self.quaternion, rotation)
-        self.motion_vector = Misc.normalize_vector(self.motion_vector) #in case the motion vector was manually supplied
+        self.motion_vector = Misc.normalize_vector(
+            self.motion_vector)  # in case the motion vector was manually supplied
         body_step = numpy.dot(self.rotation_matrix_frame2world, self.motion_vector) * speed * time
         self.position = self.position + body_step
 
@@ -161,7 +163,7 @@ class Frame:
     def set_rotations(self, yaw=0, pitch=0, roll=0):
         rotation = make_quaternion(yaw, pitch, roll)
         self.quaternion = numpy.array([1, 0, 0, 0])
-        self.motion_vector = numpy.array([1, 0, 0]) # I am not sure why I do this here.
+        self.motion_vector = numpy.array([1, 0, 0])  # I am not sure why I do this here.
         self.apply_quaternion(rotation)
 
     def goto(self, x=None, y=None, z=None, yaw=None, pitch=None, roll=None):
@@ -189,19 +191,6 @@ def make_quaternion(yaw=0, pitch=0, roll=0):
     roll_rad = numpy.deg2rad(roll)
     q = euler.euler2quat(roll_rad, pitch_rad, yaw_rad, axes='sxyz')
     return q
-
-# This was the old version
-# def make_quaternion(yaw=0, pitch=0, roll=0):
-#     pitch_rad = numpy.deg2rad(pitch)
-#     yaw_rad = numpy.deg2rad(yaw)
-#     roll_rad = numpy.deg2rad(roll)
-#     rotation_vector = numpy.array([roll_rad, pitch_rad, yaw_rad])
-#     theta = math.sqrt(numpy.dot(rotation_vector, rotation_vector))
-#     # Deal with small thetas
-#     if theta > 0: rotation_vector = rotation_vector / theta
-#     if theta < 1e-6: rotation_vector = numpy.array([1, 0, 0])
-#     rotation = quaternions.axangle2quat(rotation_vector, theta, True)
-#     return rotation
 
 
 def rotate_points_cart(x, y, z, yaw=0, pitch=0, roll=0):
@@ -261,88 +250,23 @@ def mat2sph(matrix):
     distance = Misc.mat2array(distance)
     return azimuth, elevation, distance
 
-# These are functions that relate to the Moss paper on prey persuit
-def phi_range(alpha):
-    alpha = numpy.array([alpha])
-    alpha = numpy.deg2rad(alpha)
-    alpha = numpy.mod(alpha,2*numpy.pi)
-    idx = alpha>numpy.pi
-    alpha[idx] = alpha[idx]-2*numpy.pi
-    alpha = numpy.rad2deg(alpha)
-    return alpha[0]
 
-def phi2_range(alpha):
+def pi_range(alpha):
     alpha = numpy.array([alpha])
     alpha = numpy.deg2rad(alpha)
-    positive_input = (alpha > 0)
-    alpha = numpy.mod(alpha, 2*numpy.pi)
-    alpha[alpha == 0 * positive_input] = 2*numpy.pi
+    alpha = numpy.mod(alpha, 2 * numpy.pi)
+    idx = alpha > numpy.pi
+    alpha[idx] = alpha[idx] - 2 * numpy.pi
     alpha = numpy.rad2deg(alpha)
     return alpha[0]
 
 
+def pi2_range(alpha):
+    alpha = numpy.array([alpha])
+    alpha = numpy.deg2rad(alpha)
+    alpha = numpy.mod(alpha, 2 * numpy.pi)
+    alpha = numpy.rad2deg(alpha)
+    alpha[alpha ==360] = 0
+    alpha = alpha[0]
+    return alpha
 
-
-# def test_frame():
-#     reference = numpy.array(([1, 2, 3], [3, 4, 5]))
-#     pitch = 90
-#     yaw = 90
-#     roll = 90
-#     steps = 200
-#
-#     frame = Frame()
-#     for step in range(0, steps):
-#
-#         p1 = random.random()
-#         p2 = random.random()
-#         p3 = random.random()
-#
-#         if p1 < 0.1: yaw = yaw * -1
-#         if p2 < 0.1: pitch = pitch * -1
-#         if p3 < 0.1: pitch = roll * -1
-#
-#         frame.move(time=1, speed=10, pitch=pitch, yaw=yaw, roll=roll)
-#
-#         frame_coordinates = frame.world2frame(reference)
-#         world_coordinates = frame.frame2world(frame_coordinates)
-#
-#         print(frame_coordinates)
-#         print(world_coordinates)
-#         print('-----------------')
-#
-#         # m1 = frame.rotation_matrix_frame2world
-#         # m2 = frame.rotation_matrix_world2frame
-#         # call_result = numpy.dot(m1, m2)
-#         # print(call_result)
-#
-#
-# def test_cart2sph():
-#     x = numpy.array([[1, 1, 1, 1], [-1, -1, -1, -1]])
-#     y = numpy.array([[1, 1, -1, -1], [1, 1, -1, -1]])
-#     z = numpy.array([[1, -1, 1, -1], [1, -1, 1, -1]])
-#     az, el, dist = cart2sph(x, y, z)
-#     x2, y2, z2 = sph2cart(az, el, dist)
-#     az, el, dist = cart2sph(x, y, z)
-#     print(az)
-#     print('---')
-#     print(el)
-#     print('---')
-#     print(dist)
-
-# a = numpy.array([[1, 0, 0],[0,0,1]])
-# b = Frame()
-# x = b.world2frame(a,True)
-# print(x)
-
-
-# # Quaternion implementation
-# pitch_rad = numpy.deg2rad(pitch)
-# yaw_rad = numpy.deg2rad(yaw)
-# roll_rad = numpy.deg2rad(roll)
-# rotation_vector = time * numpy.array([roll_rad, pitch_rad, yaw_rad])
-# theta = math.sqrt(numpy.dot(rotation_vector, rotation_vector))
-# # Deal with small thetas
-# if theta > 0: rotation_vector = rotation_vector / theta
-# if theta < 1e-6: rotation_vector = numpy.array([1, 0, 0])
-# # New Quaternion
-# rotation = quaternions.axangle2quat(rotation_vector, theta, True)

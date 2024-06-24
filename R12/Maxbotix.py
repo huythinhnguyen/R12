@@ -1,8 +1,3 @@
-#
-# Code for working with the maxbotix sonar head using the pyboard D
-#
-
-# 192.168.200.162
 import socket
 import time
 import numpy
@@ -51,7 +46,6 @@ class Client:
                 print('sonar: Trying to reconnect')
                 time.sleep(3)
 
-
     def disconnect(self):
         self.sock.close()
 
@@ -93,36 +87,3 @@ class Client:
             if data.endswith(break_char): break
         data = data.rstrip(break_char)
         return data, True
-
-    # def send_command(self, command, expect_answer=True):
-    #     if not command.endswith(break_char): command += break_char
-    #     self.sock.send(command.encode())
-    #     data = ''
-    #     if not expect_answer: return data
-    #     start_time = time.time()
-    #     success = False
-    #     print('Sonar: waiting for data > .', end='')
-    #     while 1:
-    #         try:
-    #             packet = self.sock.recv(1024)
-    #             packet = packet.decode()
-    #             data += packet
-    #             print('.', end='')
-    #         except socket.timeout:
-    #             print('*', end='')
-    #         if data.endswith(break_char): success = True
-    #         if time.time() - start_time > 2: break
-    #         if success: break
-    #     print()
-    #     data = data.rstrip(break_char)
-    #     return data, success
-
-
-if __name__ == "__main__":
-    import random
-    client = Client('192.168.1.5', 1000, verbose=True)
-    for x in range(1000):
-        echo = client.measure(rate=10000, duration=30)
-        s = random.random() * 2
-        time.sleep(s)
-    pyplot.show()

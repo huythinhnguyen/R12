@@ -33,7 +33,6 @@ class Ports:
         return found
 
 
-
 def get_port(device):
     ports = Ports()
     port = ports.get_port(device)
