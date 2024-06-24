@@ -3,7 +3,6 @@ import math
 import numpy
 from pyBat import Geometry
 
-
 def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
     r12_yaw = None
     r12_pitch = None
@@ -66,14 +65,21 @@ def find_track_position(world_x, world_y, world_z, world_yaw, wrist_orientation)
     possible_track_positions = track_positions[side < robot_reach]
 
     if len(possible_track_positions) == 0: return False
-    selected_i = numpy.argmax(possible_track_positions)
-    if abs(world_yaw) < 90: selected_i = numpy.argmin(possible_track_positions)
+
+    if Settings.track_position == 'auto':
+        selected_i = numpy.argmax(possible_track_positions)
+        if abs(world_yaw) < 90: selected_i = numpy.argmin(possible_track_positions)
+    if Settings.track_position == 'down':
+        selected_i = numpy.argmin(possible_track_positions)
+    if Settings.track_position == 'up':
+        selected_i = numpy.argmax(possible_track_positions)
+
     track_x = possible_track_positions[selected_i]
     return track_x
 
 
 def get_wrist_angle(world_x, world_y, world_z, world_yaw, track_x, wrist_orientation):
-    print_inventor = True
+    print_inventor = False
     world_forearm = forearm_position(world_x, world_y, world_z, world_yaw, wrist_orientation)
 
     # position of the forearm in arm frame
@@ -125,6 +131,7 @@ def run_model_single_orientation(world_x, world_y, world_z, world_yaw, world_pit
     result['arm_roll'] = arm_roll
     result['success'] = track_x
     result['array'] = [arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll]
+    print('model for', wrist_orientation, result['success'])
     return result
 
 

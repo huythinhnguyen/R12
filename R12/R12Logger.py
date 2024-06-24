@@ -48,9 +48,12 @@ class Logger:
     def write(self):
         out_file = path.join(Settings.log_dir, 'temp.html')
         html_code = str(self.table)
-        f = open(out_file, 'w')
-        f.write(html_code)
-        f.close()
+        try:
+            f = open(out_file, 'w')
+            f.write(html_code)
+            f.close()
+        except:
+            print('problem here:', out_file)
         return out_file
 
     def view(self):
