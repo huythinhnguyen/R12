@@ -1,6 +1,6 @@
 import time
 import numpy
-from R12 import RobotBat, Target
+from R12 import RobotBat
 
 R = RobotBat.RobotBat(connect_robot=True, connect_sonar=True)
 
@@ -14,6 +14,6 @@ x_positions = numpy.linspace(-500, 1000, 10)
 
 for world_x in x_positions:
     R.set_position(world_x, world_y, world_z, world_yaw, world_pitch)
-    R.measure(plot=True)
+    measurement = R.measure(plot=True)
     time.sleep(0.25)
 

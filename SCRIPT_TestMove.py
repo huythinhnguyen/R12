@@ -1,6 +1,6 @@
 import time
 import numpy
-from R12 import RobotBat, Target
+from R12 import RobotBat
 
 R = RobotBat.RobotBat(connect_robot=True, connect_sonar=False)
 

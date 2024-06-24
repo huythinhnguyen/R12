@@ -1,6 +1,7 @@
 from R12 import HTML
 from R12 import Settings
-from pyBat import Misc, FileOperations
+from R12 import Misc
+from R12 import FileOperations
 import time
 import os.path as path
 import webbrowser

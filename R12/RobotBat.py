@@ -1,21 +1,24 @@
-from pyBat import Geometry, Ports, Misc, MaxbotixRobot
 import warnings
+import platform
+import re
+import numpy
 import easygui
+from matplotlib import pyplot
+
+from R12 import R12Logger
+from R12 import Settings
+from R12 import RobotModel
+from R12 import Geometry
+from R12 import Ports
+from R12 import Misc
+from R12 import MaxbotixRobot
 
 try:
     from r12 import arm
 except:
     from .r12 import arm
 
-from R12 import R12Logger
-from R12 import Settings
-from R12 import RobotModel
-import platform
 
-import re
-import numpy
-import copy
-from matplotlib import pyplot
 
 warnings.simplefilter('once', RuntimeWarning)
 
