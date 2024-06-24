@@ -84,6 +84,7 @@ class RobotBat:
             p.print()
             if os == 'Windows': port = Ports.get_port("USB Serial Port (COM3)")
             if os == 'Linux': port = Ports.get_port("FT232R USB UART")
+            if os == 'Darwin': port = Ports.get_port('TO BE DETERMINED')
             self.logger.add_comment(['Connecting to port', port])
             self.arm = arm.Arm()
             self.arm.connect(port)
