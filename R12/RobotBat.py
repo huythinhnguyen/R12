@@ -1,15 +1,21 @@
-import copy
-import platform
+from pyBat import Geometry, Ports, Misc, MaxbotixRobot
 import warnings
 import easygui
-import numpy
-import re
 
-from pyBat import Geometry, Ports, Misc, MaxbotixRobot
+try:
+    from r12 import arm
+except:
+    from .r12 import arm
 
-from .r12 import arm
 from R12 import R12Logger
 from R12 import Settings
+from R12 import RobotModel
+import platform
+
+import re
+import numpy
+import copy
+from matplotlib import pyplot
 
 warnings.simplefilter('once', RuntimeWarning)
 
@@ -40,10 +46,6 @@ RESERVE = 'RESERVE'
 OK = 'OK'
 
 
-def ask_initialize():
-    response = easygui.ynbox(title='Robot initialize?', msg='Do you want to initialize the robot?')
-    return response
-
 def find_integers(text):
     regex = r"[-+]?[0-9]+"
     found = re.findall(regex, text)
@@ -52,61 +54,63 @@ def find_integers(text):
     return new
 
 
-def world_to_arm_angles(world_yaw, world_pitch, wrist_orientation):
-    r12_yaw = None
-    r12_pitch = None
-    r12_roll = None
-
-    if wrist_orientation == 'up':
-        r12_yaw = Geometry.phi_range(world_yaw)
-        r12_roll = Geometry.phi_range(-world_pitch)
-        r12_pitch = -90
-
-    if wrist_orientation == 'down':
-        r12_yaw = Geometry.phi_range(-world_yaw)
-        r12_roll = Geometry.phi_range(+world_pitch)
-        r12_pitch = 90
-
-    return r12_yaw, r12_pitch, r12_roll
+def ask_initialize():
+    msg = 'Do you want to initialize the robot?'
+    title = 'Robot initialize?'
+    response = easygui.ynbox(title=title, msg=msg)
+    return response
 
 
 class RobotBat:
     def __init__(self, connect_robot=True, connect_sonar=True):
-        self.logger = R12Logger.Logger()
         os = platform.system()
-        self.sonar = False
+
+        self.logger = R12Logger.Logger()
         self.connect_sonar = connect_sonar
         self.connect_robot = connect_robot
+        self.current_wrist_orientation = None
 
-        if self.connect_sonar: self.sonar = MaxbotixRobot.Client(Settings.sonar_ip, Settings.sonar_port, verbose=True)
+        if self.connect_sonar:
+            self.sonar = MaxbotixRobot.Client(Settings.sonar_ip, Settings.sonar_port, verbose=True)
+        else:
+            self.sonar = False
+            self.logger.add_comment(['Not connecting to sonar'])
 
         if self.connect_robot:
-            if os == 'Windows': port = Ports.get_port("USB Serial Port (COM5)")
+            p = Ports.Ports()
+            p.print()
+            if os == 'Windows': port = Ports.get_port("USB Serial Port (COM3)")
             if os == 'Linux': port = Ports.get_port("FT232R USB UART")
             self.logger.add_comment(['Connecting to port', port])
-            self.current_wrist_position = None
             self.arm = arm.Arm()
             self.arm.connect(port)
+        else:
+            self.arm = False
+            self.logger.add_comment(['Not connecting to robot'])
 
         self.frame = Geometry.Frame()
         self.frame_initialized = False
-        self.execute = True
 
-    def send_command(self, cmd, verbose=True, log=True):
+    def view_log(self):
+        self.logger.view()
+
+    def send_command(self, cmd):
+        self.logger.add_sent_cmd(cmd)
         if not self.connect_robot:
-            self.logger.add_comment('Robot not connected!')
+            self.logger.add_comment('Robot not connected!', level=2)
+            self.logger.add_received_response('Robot not connected!')
             return
-        if verbose: self.logger.add_comment('Sent to robot:' + cmd)
         self.arm.write(cmd)
-        if log: self.logger.add_input(cmd)
-        result = self.arm.read()
-        if log: self.logger.add_output(result)
-        #if verbose: print('received from robot -->', result)
-        return result
+        response = self.arm.read()
+        self.logger.add_received_response(response)
+        return response
 
-    def send_batch(self, cmds, verbose=False, log=True):
-        cmds = cmds.split('\n')
-        for x in cmds: self.send_command(x, verbose, log)
+    def set_tool_length(self, length=None):
+        if length is None: length = Settings.tool_length
+        self.logger.add_comment(['Set tool length:', length])
+        cmd = '%i TOOL-LENGTH !' % (length * 10)
+        result = self.send_command(cmd)
+        return result
 
     def initialize(self, ask=True):
         if ask:
@@ -123,60 +127,7 @@ class RobotBat:
         self.send_command(HOME)
         self.send_command(WHERE)
         self.set_tool_length()
-        self.logger.view()
-
-    def home(self):
-        self.send_command(HOME)
-
-    def view_log(self):
-        self.logger.view()
-
-    def set_tool_length(self, length=None):
-        if length is None: length = Settings.tool_length
-        self.logger.add_comment(['Set tool length:', length])
-        cmd = '%i TOOL-LENGTH !' % (length * 10)
-        result = self.send_command(cmd)
-        return result
-
-    def goto_track(self, track_x):
-        self.logger.add_comment(['Goto track:', track_x])
-        cmd = 'TELL TRACK %i MOVETO' % (track_x * 10 * Settings.track_correction_ratio)
-        result = self.send_command(cmd)
-        if not self.execute: return ('NOT EXECUTED')
-        return result
-
-    def goto_arm(self, arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll):
-        self.logger.add_comment(['Goto:', arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll])
-        cmd = '%i %i %i %i %i %i CM' % (arm_roll * 10, arm_yaw * 10, arm_pitch * 10, arm_z * 10, arm_y * 10, arm_x * 10)
-        if not self.execute: return ('NOT EXECUTED')
-        result = self.send_command(cmd)
-        if arm_pitch < 0: self.current_wrist_position = 'up'
-        if arm_pitch > 0: self.current_wrist_position = 'down'
-        return result
-
-    def goto_wrist(self, world_yaw=None, world_pitch=None, wrist_orientation='up'):
-        #
-        # WARNING: THIS DOES NOT UPDATE THE FRAME ATTACHED TO THE ROBOT!!!!
-        #
-        warnings.warn('WARNING: THIS DOES NOT UPDATE THE FRAME ATTACHED TO THE ROBOT!!!!', RuntimeWarning)
-        position = self.get_position()
-        if world_yaw is None: world_yaw = position[3]
-        if world_pitch is None: world_pitch = position[4]
-        arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_orientation=wrist_orientation)
-        result = self.send_command('CF')
-        result = result.split(' ')
-        x = int(result[1])
-        y = int(result[2])
-        z = int(result[3])
-        new_yaw = arm_yaw * 10
-        new_pitch = arm_pitch * 10
-        new_roll = arm_roll * 10
-        cmd = '%i %i %i %i %i %i CM' % (new_roll, new_yaw, new_pitch, z, y, x)
-        if not self.execute: return ('NOT EXECUTED')
-        result = self.send_command(cmd)
-        if arm_pitch < 0: self.current_wrist_position = 'up'
-        if arm_pitch > 0: self.current_wrist_position = 'down'
-        return result
+        self.view_log()
 
     def simulate_arm(self, arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll):
         # Simulates the robot arm for a given arm xyz and arm angles.
@@ -192,78 +143,78 @@ class RobotBat:
         pitch_axis = find_integers(pitch_axis)[2] / 100
         return {'success': True, 'pitch_axis': pitch_axis}
 
-    def check_reachable(self, arm_x, arm_y, arm_z, world_yaw, world_pitch, wrist_orientation, pitch_axis_only=False, binary=False):
-        arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_orientation=wrist_orientation)
-        result = self.simulate_arm(arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll)
-        if pitch_axis_only: return result['pitch_axis']
-        if binary: return result['success']
+    def goto_track(self, track_x):
+        self.logger.add_comment(['Goto track:', track_x])
+        cmd = 'TELL TRACK %i MOVETO' % (track_x * 10 * Settings.track_correction_ratio)
+        result = self.send_command(cmd)
         return result
 
-    def recommend_wrist_position(self, arm_x, arm_y, arm_z, world_yaw, world_pitch):
-        # Returns the recommended wrist orientation for a given x, y, z and robot_sph_2_world_cart angles
-        # Returns false if not attainable (using neither of the wrist orientations).
+    def goto_arm(self, arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll):
+        arm_x = round(arm_x, 1)
+        arm_y = round(arm_y, 1)
+        arm_z = round(arm_z, 1)
+        arm_yaw = round(arm_yaw, 1)
+        arm_pitch = round(arm_pitch, 1)
+        arm_roll = round(arm_roll, 1)
 
-        angle_up = self.check_reachable(arm_x, arm_y, arm_z, world_yaw, world_pitch, 'up', pitch_axis_only=True)
-        angle_down = self.check_reachable(arm_x, arm_y, arm_z, world_yaw, world_pitch, 'down', pitch_axis_only=True)
-
-        angle_up = abs(angle_up)
-        if not angle_up: angle_up = 1000
-        if not angle_down: angle_down = 1000
-        if min([angle_down, angle_up]) > 999: return False
-        if angle_down < angle_up: return 'down'
-        if angle_up < angle_down: return 'up'
-        return False
-
-    def recommend_wrist_track_position(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
-        world_yaw = Geometry.phi_range(world_yaw)
-        # track x should be larger than robot_sph_2_world_cart x
-        proposed_track_positions = numpy.linspace(world_x - 600, world_x, 5)
-        if abs(world_yaw) > 90:
-            # unless looking backward, then track x should be smaller than robot_sph_2_world_cart x
-            proposed_track_positions = numpy.linspace(world_x + 600, world_x, 5)
-
-        proposed_track_positions = proposed_track_positions[proposed_track_positions > -1200]
-        proposed_track_positions = proposed_track_positions[proposed_track_positions < 1200]
-
-        for proposed_track_position in proposed_track_positions:
-            self.logger.add_comment(['Try track position:', proposed_track_position])
-            arm_x = world_x - proposed_track_position
-            if wrist_orientation == 'auto':
-                wrist_recommendation = self.recommend_wrist_position(arm_x, world_y, world_z, world_yaw, world_pitch)
-                self.logger.add_comment(['Recommended wrist position:', wrist_recommendation])
-                if wrist_recommendation: return wrist_recommendation, proposed_track_position, arm_x
-            else:
-                reachable = self.check_reachable(arm_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation, binary=True)
-                if reachable: return wrist_orientation, proposed_track_position, arm_x
-        return False, False, False
-
-    def set_position_array(self, array, wrist_orientation='auto'):
-        x = array[0]
-        y = array[1]
-        z = array[2]
-        yaw = array[3]
-        pitch = array[4]
-        self.set_position(x, y, z, yaw, pitch, wrist_orientation)
-        return True
+        self.logger.add_comment(['Goto arm:', arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll])
+        cmd = '%i %i %i %i %i %i CM' % (arm_roll * 10, arm_yaw * 10, arm_pitch * 10, arm_z * 10, arm_y * 10, arm_x * 10)
+        result = self.send_command(cmd)
+        return result
 
     def set_position(self, world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation='auto'):
-        wrist_recommendation, proposed_track_position, arm_x = self.recommend_wrist_track_position(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
-        if not wrist_recommendation: return False
-        arm_yaw, arm_pitch, arm_roll = world_to_arm_angles(world_yaw, world_pitch, wrist_recommendation)
+        if Misc.iterable(world_x, allow_string=False):
+            world_x = world_x[0]
+            world_y = world_x[1]
+            world_z = world_x[2]
+            world_yaw = world_x[3]
+            world_pitch = world_x[4]
 
-        self.goto_track(proposed_track_position)
-        self.goto_arm(arm_x, world_y, world_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
+        if world_x is None: world_x = self.x
+        if world_y is None: world_y = self.y
+        if world_z is None: world_z = self.z
+        if world_yaw is None: world_yaw = self.yaw
+        if world_pitch is None: world_pitch = self.pitch
 
+        result = RobotModel.run_model(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
+        if not result:
+            self.logger.add_comment('Position can not be reached', level=2)
+            return False
+        track_x = result['track_x']
+        arm_x = result['arm_x']
+        arm_y = result['arm_y']
+        arm_z = result['arm_z']
+        arm_yaw = result['arm_yaw']
+        arm_pitch = result['arm_pitch']
+        arm_roll = result['arm_roll']
+        wrist_orientation = result['wrist_orientation']
+        self.logger.add_comment('Selected wrist_orientation: ' + wrist_orientation)
+
+        self.goto_track(track_x)
+        self.goto_arm(arm_x, arm_y, arm_z, arm_yaw, arm_pitch, arm_roll)  # world_y/z == arm_y/z, per definition
         self.frame = Geometry.Frame()
-        self.frame_initialized = True
-        self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, arm_roll)
+        self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, 0)
+        self.current_wrist_orientation = wrist_orientation
         return True
 
-    def set_move(self, fwd_dst=0, fwd_hvr=0, lat_dst=0, ud_dst=0, yaw=0, pitch=0, roll=0, wrist_orientation='auto', cds_only=False):
-        # Apply fwd movement and rotation angles
-        if not self.frame_initialized: return False
-        frame_back_up = copy.copy(self.frame)
-        self.frame.move(time=1, yaw=yaw, pitch=pitch, roll=roll, speed=fwd_dst)
+    def move(self, fwd_dst=0, fwd_hvr=0, lat_dst=0, ud_dst=0, yaw=0, pitch=0, wrist_orientation='auto'):
+        # Apply pitch and yaw
+        # I use this approach instead of the move function for the frame
+        # to rotate around the y and z axis aligned with the world coordinate frame
+        # not with the rotated axes attached to the bat
+        world_yaw = self.yaw + yaw
+        world_pitch = self.pitch + pitch
+        world_x = self.x
+        world_y = self.y
+        world_z = self.z
+        self.frame = Geometry.Frame()
+        self.frame.goto(world_x, world_y, world_z, world_yaw, world_pitch, 0)
+        
+        # Apply forward motion
+        motion_vector = numpy.array([1, 0, 0])
+        motion_vector = Misc.normalize_vector(motion_vector)
+        body_step = numpy.dot(self.frame.rotation_matrix_frame2world, motion_vector) * fwd_dst
+        self.frame.position = self.frame.position + body_step
 
         # Apply lateral motion
         motion_vector = numpy.array([0, 1, 0])
@@ -274,88 +225,75 @@ class RobotBat:
         # Hover fwd (keep height constant)
         motion_vector = numpy.array([1, 0, 0])
         motion_vector = Misc.normalize_vector(motion_vector)
-        body_step = numpy.dot(self.frame.rotation_matrix_frame2world, motion_vector) * fwd_hvr
+        body_step = numpy.dot(self.frame.rotation_matrix_frame2world, motion_vector)
         body_step[2] = 0
+        body_step_length = numpy.sum(body_step ** 2) ** 0.5
+        body_step = (body_step / body_step_length) * fwd_hvr
         self.frame.position = self.frame.position + body_step
 
+        # Get frame data and apply
         world_x = self.frame.x
         world_y = self.frame.y
         world_z = self.frame.z + ud_dst
         world_yaw = self.frame.euler[2]  # Yaw is z rot
         world_pitch = self.frame.euler[1]  # pitch is y rot
-        if cds_only:
-            self.frame = frame_back_up
-            return world_x, world_y, world_z, world_yaw, world_pitch
-
         success = self.set_position(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
         return success
 
-    def measure(self):
-        if not self.sonar: return numpy.random.random((2, 100))
+    def measure(self, plot=False, subtract_floor=True):
+        self.logger.add_comment('Starting echo measurement')
+        if not self.sonar: return numpy.random.random((200, 2)), numpy.arange(0,200)
         flip = False
-        if self.connect_robot and self.current_wrist_position == 'up': flip = True
+        if self.connect_robot and self.current_wrist_orientation == 'down': flip = True
         data = self.sonar.measure(rate=Settings.sonar_rate, duration=Settings.sonar_duration)
         if flip: data = numpy.fliplr(data)
+        if subtract_floor: data = data - Settings.sonar_floor
+        data[data < 0] = 0
+        if plot:
+            pyplot.plot(data)
+            pyplot.legend(['Left', 'Right'])
+            pyplot.show()
         return data
 
-    def pitch_scan(self, pitches, wrist_orientation):
-        position = self.get_position()
-        current_pitch = position[4]
-        measurements = []
-        for x in pitches:
-            self.goto_wrist(world_pitch=x, wrist_orientation=wrist_orientation)
-            data = self.measure()
-            measurements.append(data)
-        self.goto_wrist(world_pitch=current_pitch, wrist_orientation=wrist_orientation)
-        return measurements
-
-    def world_cart_2_robot(self, world_x, world_y=None, world_z=None, spherical=True):
-        if world_y is not None: world_x = [world_x, world_y, world_z]
-        world = numpy.array(world_x)
-        result = self.frame.world2frame(world, spherical=spherical)
-        return result
-
-    def robot_sph_2_world_cart(self, azimuth, elevation, distance):
-        if elevation is None:
-            azimuth = azimuth[0]
-            elevation = azimuth[1]
-            distance = azimuth[2]
-        position = Geometry.sph2cart(azimuth, elevation, distance)
-        position = numpy.array(position)
-        result = self.frame.frame2world(position)
-        return result
-
-    def get_position(self, as_string=False):
-        world_x = self.frame.x
-        world_y = self.frame.y
-        world_z = self.frame.z
-        world_yaw = self.frame.euler[2]  # Yaw is z rot
-        world_pitch = self.frame.euler[1]  # pitch is y rot
-        data = [world_x, world_y, world_z, world_yaw, world_pitch]
-        if as_string: return "%i %i %i %i %i" % tuple(data)
-        return data
+    def relative(self, azimuth, distance):
+        cart = Geometry.sph2cart(azimuth, 0, distance)
+        cart = numpy.array(cart)
+        world = self.frame.frame2world(cart)
+        return world
 
     @property
-    def x(self):
-        position = self.get_position()
-        return position[0]
+    def position(self): return list(self.frame.position)
 
     @property
-    def y(self):
-        position = self.get_position()
-        return position[1]
+    def x(self): return self.frame.x
 
     @property
-    def z(self):
-        position = self.get_position()
-        return position[2]
+    def y(self): return self.frame.y
+
+    @property
+    def z(self): return self.frame.z
+
+    @property
+    def euler(self): return self.frame.euler
 
     @property
     def yaw(self):
-        position = self.get_position()
-        return position[3]
+        euler = self.euler
+        yaw = euler[2]
+        return yaw
 
     @property
     def pitch(self):
-        position = self.get_position()
-        return position[4]
+        euler = self.euler
+        pitch = euler[1]
+        return pitch
+
+    @property
+    def roll(self):
+        euler = self.euler
+        yaw = euler[0]
+        return yaw
+
+
+
+
