@@ -244,7 +244,7 @@ class RobotBat:
         success = self.set_position(world_x, world_y, world_z, world_yaw, world_pitch, wrist_orientation)
         return success
 
-    def measure(self, plot=False, subtract_floor=True):
+    def measure(self, plot=False, subtract_floor=True, title=''):
         self.logger.add_comment('Starting echo measurement')
         if not self.sonar: return numpy.random.random((200, 2)), numpy.arange(0,200)
         flip = False
@@ -256,7 +256,9 @@ class RobotBat:
         if plot:
             pyplot.plot(data)
             pyplot.legend(['Left', 'Right'])
+            pyplot.title(title)
             pyplot.show()
+
         return data
 
     def relative(self, azimuth, distance):
