@@ -8,3 +8,5 @@ R12/__pycache__/
 R12/r12/__pycache__/
 
 *.odg#
+
+data/
