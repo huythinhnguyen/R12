@@ -9,4 +9,6 @@ R12/r12/__pycache__/
 
 *.odg#
 
-data/
+
+
+data/old/
