@@ -5,15 +5,19 @@ import numpy as np
 import pickle
 import time
 import sys
+import inspect
 
 ############## SET POSITION PARAMETERS HERE
-z_position = 300
 pitch = 0
 repeats = 5
-x_positions = np.linspace(-500, 500, 10)
-y_positions = np.linspace(0, 200, 5)
+x_positions = np.linspace(-700, 0, 15) # min, max, number of steps
+y_positions = np.linspace(0, 200, 3)
 yaw_positions = np.linspace(0, 30, 3)
 ###########################################
+
+script_text = inspect.getsource(sys.modules[__name__])
+y_extents = [0, 100, 200, 300]
+z_extents = [500, 400, 300, 300]
 
 file_name, description = CombinationTools.get_file_name()
 full_file_name = path.join('data', file_name)
@@ -44,11 +48,13 @@ if path.exists(full_file_name):
     file.close()
     existing_combinations = existing_data['combinations']
     existing_pitch = existing_data['pitch']
-    existing_z = existing_data['z_position']
+    existing_y_extents = existing_data['y_extents']
+    existing_z_extents = existing_data['z_extents']
     existing_matches = True
     if not combinations == existing_combinations: existing_matches = False
     if not pitch == existing_pitch: existing_matches = False
-    if not z_position == existing_z: existing_matches = False
+    if not y_extents == existing_y_extents: existing_matches = False
+    if not z_extents == existing_z_extents: existing_matches = False
 
     if existing_matches:
         action = CombinationTools.ask_action()
@@ -73,7 +79,7 @@ for index, combination in enumerate(combinations):
     x_index = indices[0]
     y_index = indices[1]
     yaw_index = indices[2]
-
+    z_position = np.interp(current_y, y_extents, z_extents)
     move_result = R.set_position(current_x, current_y, z_position, current_yaw, pitch)
     success_array[x_index, y_index, yaw_index] = move_result
     for i in range(repeats):
@@ -89,11 +95,13 @@ for index, combination in enumerate(combinations):
         'combinations': combinations,
         'x_positions': x_positions,
         'y_positions': y_positions,
-        'z_position': z_position,
+        'y_extents': y_extents,
+        'z_extents': z_extents,
         'yaw_positions': yaw_positions,
         'pitch': pitch,
         'repeats': repeats,
         'description': description,
+        'script_text': script_text,
         'last_index': index
     }
 
