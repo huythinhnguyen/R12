@@ -20,7 +20,7 @@ y_extents = [0, 100, 200, 300]
 z_extents = [500, 400, 300, 300]
 
 file_name, description = CombinationTools.get_file_name()
-full_file_name = path.join('data', file_name)
+full_file_name = path.join('data', file_name + '.pck')
 
 combinations = CombinationTools.generate_combinations(x_positions, y_positions, yaw_positions)
 
