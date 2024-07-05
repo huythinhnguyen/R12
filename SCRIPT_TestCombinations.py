@@ -66,7 +66,7 @@ if path.exists(full_file_name):
             last_index = existing_data['last_index']
 
 for index, combination in enumerate(combinations):
-    if index <= last_index: continue
+    if index < last_index: continue
     print('#' * 25)
     print('>>>> POSITION', index, 'OF', len(combinations))
     print('#' * 25)
