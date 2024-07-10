@@ -5,9 +5,9 @@ import datetime
 import time
 
 
-DATE = datetime.datetime.now().strftime('%Y-%m-%d')
-TIME = datetime.datetime.now().strftime('%H-%M-%S')
-SAVE_PATH = os.path.join('data', DATE, TIME)
+DATE = datetime.datetime.now().strftime('%h%d')
+TIME = datetime.datetime.now().strftime('%H:%M:%S')
+SAVE_PATH = os.path.join('data', DATE+'_'+TIME)
 LOG_FILE = os.path.join(SAVE_PATH, 'log.txt')
 # Path to the directory where the script is located
 if not os.path.exists(SAVE_PATH): os.makedirs(SAVE_PATH)
