@@ -34,8 +34,7 @@ def do_measurement(world_x:int,
     if not dry_run:
         data =  R.measure(subtract_floor=True, plot=plot)
         data_array = np.zeros((repeats, data.shape[0], data.shape[1]))
-        file_name = os.path.join(save_path, 'data.pkl')
-        full_file_name = os.path.join('data', file_name + '.pkl')
+        full_file_name = os.path.join(save_path, 'data.pkl')
         for i in range(repeats):
             print('###########', i)
             data = R.measure(plot=False, subtract_floor=False)
