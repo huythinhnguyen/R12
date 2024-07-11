@@ -21,7 +21,7 @@ description = 'Test'
 
 def check_z_reach(y:int,z:int, reach:int):
     if y**2 + z**2 > reach**2:
-        logging.info*('Reach limit exceeded')
+        logging.info('Reach limit exceeded')
         logging.info('y = %s, z = %s, reach = %s', y, z, reach)
         new_z = int(np.sqrt(reach**2 - y**2))
         logging.info('new_z = %s',new_z)

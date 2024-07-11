@@ -55,7 +55,7 @@ def main():
     return script.do_measurement(WORLD_X, WORLD_Y, WORLD_Z, WORLD_PITCH, WORLD_YAW,
                                  REPEATS, DRY_RUN, RT_PLOT, DELAY, SAVE_DATA,
                                  REACH_LIMIT, DESCRIPTION,
-                                 save_data=SAVE_PATH)
+                                 save_path=SAVE_PATH)
 
 
 if __name__ == '__main__':
