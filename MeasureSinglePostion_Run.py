@@ -18,14 +18,16 @@ from script import SCRIPT_MeasureSinglePosition as script
 
 WORLD_X = -200 #mm 
 WORLD_Y = 200 #mm
+WORLD_Z = 300 #mm
 WORLD_PITCH = 0 #deg
 WORLD_YAW = 27.5 #deg
-DRY_RUN = False # Set False to do measurement, True to skip measurement
+DRY_RUN = True # Set False to do measurement, True to skip measurement
 REPEATS = 50
 RT_PLOT = False # Set True to plot the data in real time
 DELAY = 0.25
 SAVE_DATA = False # Set True to save the data
 # This is need to revise to a function of a circle --> Not optimal but leave it here for now
+REACH_LIMIT = 450 #mm DONT'CHANGE THIS!
 DESCRIPTION = ''
 
 
@@ -50,9 +52,10 @@ logging.info("DESCRIPTION = %s", DESCRIPTION)
 logging.info("SAVE_PATH = %s", SAVE_PATH)
 
 def main():
-    return script.do_measurement(WORLD_X, WORLD_Y, WORLD_PITCH, WORLD_YAW,
+    return script.do_measurement(WORLD_X, WORLD_Y, WORLD_Z, WORLD_PITCH, WORLD_YAW,
                                  REPEATS, DRY_RUN, RT_PLOT, DELAY, SAVE_DATA,
-                                 REACH_TABLE, DESCRIPTION, SAVE_PATH)
+                                 REACH_LIMIT, DESCRIPTION,
+                                 save_data=SAVE_PATH)
 
 
 if __name__ == '__main__':
